@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>Monte seu Cenário 🧸</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <h1>🧺 Monte seu Cenário</h1>
+  <div class="topbar-actions">
+    <span id="syncStatus" class="sync-status">💾 Iniciando...</span>
+    <button id="btnImport" class="pill-btn" title="Importar novo cenário">📥 Importar Cenário</button>
+    <button id="btnUndo" class="pill-btn" title="Desfazer">↩️ Desfazer</button>
+    <button id="btnReset" class="pill-btn danger" title="Limpar tudo">🗑️ Limpar</button>
+  </div>
+</header>
+
+<main class="layout">
+
+  <!-- Center-right: the empty scene canvas -->
+  <section class="stage-wrap">
+
+    <div class="switchers">
+      <div id="scenarioSwitcher" class="scenario-switcher"></div>
+      <div id="variantSwitcher" class="variant-switcher"></div>
+    </div>
+
+    <div class="zoom-controls">
+      <button id="zoomOut" title="Diminuir zoom">➖</button>
+      <button id="zoomReset" title="Redefinir vista">🔄</button>
+      <button id="zoomIn" title="Aumentar zoom">➕</button>
+    </div>
+
+    <div id="stage" class="stage">
+      <div id="stageInner" class="stage-inner">
+        <img id="stageBg" class="stage-bg" alt="Cenário vazio" draggable="false">
+        <!-- placed stickers get injected here -->
+      </div>
+    </div>
+
+    <!-- Bottom-left floating reference thumbnail -->
+    <div id="refCard" class="ref-card">
+      <div class="ref-card-label">✨ Modelo</div>
+      <img id="refThumb" alt="Cenário completo de referência" draggable="false">
+      <input type="range" id="refSizeSlider" min="110" max="520" value="260" class="ref-size-slider">
+    </div>
+  </section>
+
+  <!-- Right sidebar: sticker palette (single unified grid, no tabs) -->
+  <aside class="palette">
+    <div class="palette-title">🎨 Peças</div>
+    <div id="paletteGrid" class="palette-grid"></div>
+  </aside>
+
+</main>
+
+<!-- floating toolbar shown above a selected placed sticker -->
+<div id="itemToolbar" class="item-toolbar hidden">
+  <button data-action="front" title="Trazer para frente">⬆️</button>
+  <button data-action="smaller" title="Diminuir">➖</button>
+  <button data-action="bigger" title="Aumentar">➕</button>
+  <button data-action="delete" title="Remover">🗑️</button>
+</div>
+
+<!-- ghost element that follows the pointer while dragging from the palette -->
+<img id="dragGhost" class="drag-ghost hidden" draggable="false">
+
+<!-- Import scenario modal -->
+<div id="importModal" class="modal-overlay hidden">
+  <div class="modal-card">
+    <h2>📥 Importar novo cenário</h2>
+    <p class="modal-hint">Envie fotos parecidas com as folhas de adesivo. Vou recortar as peças automaticamente, aqui mesmo no navegador.</p>
+
+    <label class="modal-field">
+      <span>Nome do cenário</span>
+      <input type="text" id="impName" placeholder="Ex: Quarto da Bailarina">
+    </label>
+
+    <label class="modal-field">
+      <span>1. Foto da cena montada (referência) — opcional</span>
+      <input type="file" id="impThumb" accept="image/*">
+    </label>
+
+    <label class="modal-field">
+      <span>2. Foto da cena vazia (só o fundo)</span>
+      <input type="file" id="impBg" accept="image/*">
+    </label>
+
+    <label class="modal-field">
+      <span>3. Foto(s) da folha de adesivos (pode escolher várias)</span>
+      <input type="file" id="impStickers" accept="image/*" multiple>
+    </label>
+
+    <div id="impStatus" class="modal-status"></div>
+
+    <div class="modal-actions">
+      <button id="impCancel" class="pill-btn">Cancelar</button>
+      <button id="impCreate" class="pill-btn danger">✨ Criar cenário</button>
+    </div>
+  </div>
+</div>
+
+<canvas id="workCanvas" style="display:none;"></canvas>
+
+<script type="module" src="script.js"></script>
+</body>
+</html>

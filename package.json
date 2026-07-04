@@ -1,0 +1,9 @@
+{
+  "name": "monte-seu-cenario",
+  "version": "1.0.0",
+  "private": true,
+  "description": "App de montar cenários para crianças, com cache local e sincronização opcional via Firebase.",
+  "scripts": {
+    "dev": "python3 -m http.server 8080"
+  }
+}
