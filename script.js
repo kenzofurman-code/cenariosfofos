@@ -165,26 +165,16 @@ async function segmentStickerSheet(file, maxDim = 1400, minAreaPx = 500){
   const bgG = sumG / 4;
   const bgB = sumB / 4;
 
-  // 2) Classifica os pixels como fundo se a distância de cor R-G-B for menor que a tolerância
-  const isBgCandidate = new Uint8Array(n);
-  const tolerance = 30; // distância euclidiana R-G-B tolerável
-  for (let i = 0; i < n; i++){
-    const o = i*4;
-    const dr = data[o] - bgR;
-    const dg = data[o+1] - bgG;
-    const db = data[o+2] - bgB;
-    const dist = Math.sqrt(dr*dr + dg*dg + db*db);
-    isBgCandidate[i] = (dist < tolerance) ? 1 : 0;
-  }
-
-  let bgMask = boxMin1D(isBgCandidate, w, h, 1, true);
-  bgMask = boxMin1D(bgMask, w, h, 1, false);
-
+  // 2) Preenchimento de fundo por inundação sensível a contornos de cor local (Magic Wand)
   const background = new Uint8Array(n);
   const stack = [];
+  
   function seed(x, y){
-    const i = y*w + x;
-    if (bgMask[i] && !background[i]){ background[i] = 1; stack.push(i); }
+    const i = y * w + x;
+    if (!background[i]) {
+      background[i] = 1;
+      stack.push(i);
+    }
   }
 
   // Semeia o preenchimento de fundo ao longo do retângulo de recuo (inset) de 3%
@@ -196,13 +186,45 @@ async function segmentStickerSheet(file, maxDim = 1400, minAreaPx = 500){
     seed(insetX, y);
     seed(w - 1 - insetX, y);
   }
+
+  const localTolerance = 12; // tolerância local de diferença de cor entre pixels vizinhos (impede cruzar a borda branca)
+  const maxGlobalTolerance = 75; // distância global máxima permitida em relação à cor do papel de fundo
+
   while (stack.length){
     const i = stack.pop();
     const x = i % w, y = (i / w) | 0;
-    if (x > 0){ const j=i-1; if (bgMask[j] && !background[j]){ background[j]=1; stack.push(j); } }
-    if (x < w-1){ const j=i+1; if (bgMask[j] && !background[j]){ background[j]=1; stack.push(j); } }
-    if (y > 0){ const j=i-w; if (bgMask[j] && !background[j]){ background[j]=1; stack.push(j); } }
-    if (y < h-1){ const j=i+w; if (bgMask[j] && !background[j]){ background[j]=1; stack.push(j); } }
+    const o = i * 4;
+    const r = data[o], g = data[o+1], b = data[o+2];
+
+    const neighbors = [];
+    if (x > 0) neighbors.push(i - 1);
+    if (x < w - 1) neighbors.push(i + 1);
+    if (y > 0) neighbors.push(i - w);
+    if (y < h - 1) neighbors.push(i + w);
+
+    for (const j of neighbors) {
+      if (!background[j]) {
+        const jo = j * 4;
+        const nr = data[jo], ng = data[jo+1], nb = data[jo+2];
+        
+        // Diferença de cor local (passo a passo)
+        const dr = nr - r;
+        const dg = ng - g;
+        const db = nb - b;
+        const stepDist = Math.sqrt(dr*dr + dg*dg + db*db);
+
+        // Distância de cor global até o papel de fundo original
+        const gdr = nr - bgR;
+        const gdg = ng - bgG;
+        const gdb = nb - bgB;
+        const globalDist = Math.sqrt(gdr*gdr + gdg*gdg + gdb*gdb);
+
+        if (stepDist < localTolerance && globalDist < maxGlobalTolerance) {
+          background[j] = 1;
+          stack.push(j);
+        }
+      }
+    }
   }
 
   const foreground = new Uint8Array(n);
