@@ -716,6 +716,12 @@ document.getElementById('familySave').addEventListener('click', async () => {
   saveBtn.disabled = true;
   cancelBtn.disabled = true;
   
+  if (code) {
+    localStorage.setItem('familyCode', code);
+  } else {
+    localStorage.removeItem('familyCode');
+  }
+
   if (cloudEnabled && code) {
     const hintText = document.querySelector('#familyModal .modal-hint');
     try {
@@ -732,12 +738,6 @@ document.getElementById('familySave').addEventListener('click', async () => {
     } catch (e) {
       console.warn('Erro ao pré-sincronizar cenários locais', e);
     }
-  }
-  
-  if (code) {
-    localStorage.setItem('familyCode', code);
-  } else {
-    localStorage.removeItem('familyCode');
   }
   
   window.location.reload();
