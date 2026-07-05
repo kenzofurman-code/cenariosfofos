@@ -218,14 +218,6 @@ async function segmentStickerSheet(file, maxDim = 1400, minAreaPx = 500){
 // ======================= Scenario management =======================
 const scenarios = [];
 let currentScenarioIndex = 0;
-let currentVariantDeg = 0;
-
-const VARIANTS = [
-  { label: '✨ Original', deg: 0 },
-  { label: '🌊 Azulado', deg: 130 },
-  { label: '🍬 Rosado', deg: -40 },
-  { label: '🌿 Esverdeado', deg: 70 },
-];
 
 function getCurrentScenario(){ return scenarios[currentScenarioIndex]; }
 
@@ -318,42 +310,6 @@ async function deleteScenario(idx, event) {
   renderScenarioSwitcher();
 }
 
-function renderVariantSwitcher(){
-  const el = document.getElementById('variantSwitcher');
-  el.innerHTML = '';
-  VARIANTS.forEach(v => {
-    const btn = document.createElement('button');
-    btn.className = 'variant-btn' + (v.deg === currentVariantDeg ? ' active' : '');
-    btn.textContent = v.label;
-    btn.addEventListener('click', async () => {
-      currentVariantDeg = v.deg;
-      await applyVariant();
-      renderVariantSwitcher();
-    });
-    el.appendChild(btn);
-  });
-}
-async function applyVariant(){
-  const sc = getCurrentScenario();
-  if (!sc) return;
-  if (currentVariantDeg === 0){ stageBg.src = sc.background; return; }
-  if (!sc.variantCache) sc.variantCache = {};
-  if (sc.variantCache[currentVariantDeg]){ stageBg.src = sc.variantCache[currentVariantDeg]; return; }
-  try {
-    const img = await loadImageFromSrc(sc.background);
-    const canvas = document.createElement('canvas');
-    canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.filter = `hue-rotate(${currentVariantDeg}deg)`;
-    ctx.drawImage(img, 0, 0);
-    const uri = canvas.toDataURL('image/webp', 0.85);
-    sc.variantCache[currentVariantDeg] = uri;
-    stageBg.src = uri;
-  } catch (e){
-    console.warn('Não foi possível gerar variante de cor', e);
-    stageBg.src = sc.background;
-  }
-}
 
 // ---- per-scenario layout persistence ----
 async function saveCurrentLayout(){
@@ -369,13 +325,11 @@ async function selectScenario(idx, isInitialLoad = false){
 
   if (scenarios.length === 0 || idx === -1) {
     currentScenarioIndex = -1;
-    currentVariantDeg = 0;
     stageBg.src = 'assets/background_empty.webp';
     refCard.style.display = 'none';
 
     renderPalette();
     renderScenarioSwitcher();
-    renderVariantSwitcher();
     resetView();
 
     placedItems.forEach(r => r.el.remove());
@@ -386,17 +340,15 @@ async function selectScenario(idx, isInitialLoad = false){
   }
 
   currentScenarioIndex = idx;
-  currentVariantDeg = 0;
   const sc = getCurrentScenario();
   if (!sc) return;
 
   if (sc.thumbnail){ refThumb.src = sc.thumbnail; refCard.style.display = ''; }
   else { refCard.style.display = 'none'; }
 
-  await applyVariant();
+  stageBg.src = sc.background;
   renderPalette();
   renderScenarioSwitcher();
-  renderVariantSwitcher();
   resetView();
 
   // clear canvas then restore this scenario's own saved layout (if any)

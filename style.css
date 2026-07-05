@@ -94,13 +94,13 @@ h1{
   gap: 6px;
   flex-shrink:0;
 }
-.scenario-switcher, .variant-switcher{
+.scenario-switcher{
   display:flex;
   gap: 8px;
   flex-wrap: wrap;
   justify-content:center;
 }
-.scenario-btn, .variant-btn{
+.scenario-btn{
   font-family:'Baloo 2', cursive;
   font-weight:700;
   font-size: 0.85rem;
@@ -114,12 +114,12 @@ h1{
   opacity: 0.7;
   white-space: nowrap;
 }
-.scenario-btn.active, .variant-btn.active{
+.scenario-btn.active{
   background: var(--lavender);
   color: white;
   opacity:1;
 }
-.scenario-btn:hover, .variant-btn:hover{ opacity:1; }
+.scenario-btn:hover{ opacity:1; }
 .scenario-btn{ background: var(--gold); }
 .scenario-btn.active{ background: var(--lavender-deep); }
 
