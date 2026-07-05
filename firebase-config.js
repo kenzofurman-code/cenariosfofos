@@ -10,10 +10,11 @@
 // (cache do navegador via IndexedDB), sem tentar falar com a nuvem.
 
 export const firebaseConfig = {
-  apiKey: "COLE_AQUI",
-  authDomain: "SEU_PROJETO.firebaseapp.com",
-  projectId: "SEU_PROJETO",
-  storageBucket: "SEU_PROJETO.appspot.com",
-  messagingSenderId: "COLE_AQUI",
-  appId: "COLE_AQUI"
+  apiKey: "AIzaSyA-aGgpKYWRPl9rXCn6ELCUSg4HnqrTnQQ",
+  authDomain: "cenariosfofos.firebaseapp.com",
+  projectId: "cenariosfofos",
+  storageBucket: "cenariosfofos.firebasestorage.app",
+  messagingSenderId: "172088409435",
+  appId: "1:172088409435:web:550bb1bce1ca03901dae7e",
+  measurementId: "G-N6PDQBWM8J"
 };
