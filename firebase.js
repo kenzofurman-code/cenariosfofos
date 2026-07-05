@@ -54,9 +54,14 @@ export function initCloud(){
   return initPromise;
 }
 
+export function getSyncFolderId(){
+  const code = localStorage.getItem('familyCode');
+  return (code && code.trim()) ? code.trim() : (currentUser ? currentUser.uid : 'anonymous');
+}
+
 function scenariosCol(){
   const { collection } = window.__firestoreMod;
-  return collection(db, 'users', currentUser.uid, 'scenarios');
+  return collection(db, 'users', getSyncFolderId(), 'scenarios');
 }
 
 export async function uploadImageToStorage(dataURL, path){
@@ -136,7 +141,7 @@ export async function saveLayoutCloud(scenarioId, items){
   if (!cloudEnabled || !currentUser) return false;
   try {
     const { doc, setDoc, serverTimestamp } = window.__firestoreMod;
-    await setDoc(doc(db, 'users', currentUser.uid, 'layouts', scenarioId), {
+    await setDoc(doc(db, 'users', getSyncFolderId(), 'layouts', scenarioId), {
       items, updatedAt: serverTimestamp()
     });
     return true;
@@ -147,7 +152,7 @@ export async function loadLayoutCloud(scenarioId){
   if (!cloudEnabled || !currentUser) return null;
   try {
     const { doc, getDoc } = window.__firestoreMod;
-    const snap = await getDoc(doc(db, 'users', currentUser.uid, 'layouts', scenarioId));
+    const snap = await getDoc(doc(db, 'users', getSyncFolderId(), 'layouts', scenarioId));
     return snap.exists() ? snap.data().items : null;
   } catch (e) { return null; }
 }
@@ -159,7 +164,7 @@ export async function deleteScenarioCloud(id){
     // 1. Delete scenario document from user's subcollection
     await deleteDoc(doc(scenariosCol(), id));
     // 2. Delete layout document from user's layouts subcollection
-    await deleteDoc(doc(db, 'users', currentUser.uid, 'layouts', id));
+    await deleteDoc(doc(db, 'users', getSyncFolderId(), 'layouts', id));
     
     // 3. Delete files from Firebase Storage if possible
     try {

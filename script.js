@@ -7,7 +7,8 @@ import {
 import {
   cloudEnabled, initCloud,
   saveScenarioCloud, loadScenariosCloud,
-  saveLayoutCloud, deleteScenarioCloud
+  saveLayoutCloud, deleteScenarioCloud,
+  getSyncFolderId
 } from './firebase.js';
 
 // ======================= DOM refs =======================
@@ -683,6 +684,62 @@ document.getElementById('btnImport').addEventListener('click', () => importModal
 document.getElementById('impCancel').addEventListener('click', () => importModal.classList.add('hidden'));
 document.getElementById('impCreate').addEventListener('click', onCreateScenario);
 
+// ======================= Family Code modal =======================
+const familyModal = document.getElementById('familyModal');
+const familyCodeInput = document.getElementById('familyCodeInput');
+const btnSync = document.getElementById('btnSync');
+
+btnSync.addEventListener('click', () => {
+  familyCodeInput.value = localStorage.getItem('familyCode') || '';
+  familyModal.classList.remove('hidden');
+});
+
+document.getElementById('familyCancel').addEventListener('click', () => {
+  familyModal.classList.add('hidden');
+});
+
+document.getElementById('familySave').addEventListener('click', async () => {
+  const code = familyCodeInput.value.trim();
+  const oldCode = localStorage.getItem('familyCode') || '';
+  
+  if (code === oldCode) {
+    familyModal.classList.add('hidden');
+    return;
+  }
+  
+  const saveBtn = document.getElementById('familySave');
+  const cancelBtn = document.getElementById('familyCancel');
+  
+  saveBtn.disabled = true;
+  cancelBtn.disabled = true;
+  
+  if (cloudEnabled && code) {
+    const hintText = document.querySelector('#familyModal .modal-hint');
+    try {
+      hintText.textContent = 'Enviando cenários locais para a nova pasta da nuvem...';
+      for (const sc of scenarios) {
+        if (sc.id.startsWith('custom')) {
+          await saveScenarioCloud(sc);
+          const layout = await loadLayoutLocal(sc.id);
+          if (layout && layout.length) {
+            await saveLayoutCloud(sc.id, layout);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Erro ao pré-sincronizar cenários locais', e);
+    }
+  }
+  
+  if (code) {
+    localStorage.setItem('familyCode', code);
+  } else {
+    localStorage.removeItem('familyCode');
+  }
+  
+  window.location.reload();
+});
+
 async function onCreateScenario(){
   const statusEl = document.getElementById('impStatus');
   const nameInput = document.getElementById('impName');
@@ -758,7 +815,13 @@ async function onCreateScenario(){
 }
 
 // ======================= Sync status indicator =======================
-function setSyncStatus(text){ if (syncStatusEl) syncStatusEl.textContent = text; }
+function setSyncStatus(text){
+  if (syncStatusEl) {
+    const code = localStorage.getItem('familyCode');
+    const suffix = (code && code.trim()) ? ` (Código: ${code.trim()})` : '';
+    syncStatusEl.textContent = text + suffix;
+  }
+}
 
 // ======================= Init =======================
 (async function init(){

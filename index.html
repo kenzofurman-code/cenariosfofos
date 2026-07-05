@@ -15,6 +15,7 @@
   <h1>🧺 Monte seu Cenário</h1>
   <div class="topbar-actions">
     <span id="syncStatus" class="sync-status">💾 Iniciando...</span>
+    <button id="btnSync" class="pill-btn" title="Sincronizar aparelhos">👥 Conectar Aparelhos</button>
     <button id="btnImport" class="pill-btn" title="Importar novo cenário">📥 Importar Cenário</button>
     <button id="btnUndo" class="pill-btn" title="Desfazer">↩️ Desfazer</button>
     <button id="btnReset" class="pill-btn danger" title="Limpar tudo">🗑️ Limpar</button>
@@ -101,6 +102,24 @@
     <div class="modal-actions">
       <button id="impCancel" class="pill-btn">Cancelar</button>
       <button id="impCreate" class="pill-btn danger">✨ Criar cenário</button>
+    </div>
+  </div>
+</div>
+
+<!-- Family Code modal -->
+<div id="familyModal" class="modal-overlay hidden">
+  <div class="modal-card">
+    <h2>👥 Sincronizar Aparelhos</h2>
+    <p class="modal-hint">Digite o mesmo código em todos os seus aparelhos (computador, tablet, celular) para que eles compartilhem os mesmos cenários e figurinhas.</p>
+
+    <label class="modal-field">
+      <span>Código da Família</span>
+      <input type="text" id="familyCodeInput" placeholder="Ex: familia_silva">
+    </label>
+
+    <div class="modal-actions">
+      <button id="familyCancel" class="pill-btn">Cancelar</button>
+      <button id="familySave" class="pill-btn danger">💾 Conectar</button>
     </div>
   </div>
 </div>
