@@ -134,21 +134,24 @@ async function segmentStickerSheet(file, maxDim = 1400, minAreaPx = 500){
     isBgCandidate[i] = (data[o] > 220 && data[o+1] > 220 && data[o+2] > 220) ? 1 : 0;
   }
 
+  let bgMask = boxMin1D(isBgCandidate, w, h, 1, true);
+  bgMask = boxMin1D(bgMask, w, h, 1, false);
+
   const background = new Uint8Array(n);
   const stack = [];
   function seed(x, y){
     const i = y*w + x;
-    if (isBgCandidate[i] && !background[i]){ background[i] = 1; stack.push(i); }
+    if (bgMask[i] && !background[i]){ background[i] = 1; stack.push(i); }
   }
   for (let x = 0; x < w; x++){ seed(x, 0); seed(x, h-1); }
   for (let y = 0; y < h; y++){ seed(0, y); seed(w-1, y); }
   while (stack.length){
     const i = stack.pop();
     const x = i % w, y = (i / w) | 0;
-    if (x > 0){ const j=i-1; if (isBgCandidate[j] && !background[j]){ background[j]=1; stack.push(j); } }
-    if (x < w-1){ const j=i+1; if (isBgCandidate[j] && !background[j]){ background[j]=1; stack.push(j); } }
-    if (y > 0){ const j=i-w; if (isBgCandidate[j] && !background[j]){ background[j]=1; stack.push(j); } }
-    if (y < h-1){ const j=i+w; if (isBgCandidate[j] && !background[j]){ background[j]=1; stack.push(j); } }
+    if (x > 0){ const j=i-1; if (bgMask[j] && !background[j]){ background[j]=1; stack.push(j); } }
+    if (x < w-1){ const j=i+1; if (bgMask[j] && !background[j]){ background[j]=1; stack.push(j); } }
+    if (y > 0){ const j=i-w; if (bgMask[j] && !background[j]){ background[j]=1; stack.push(j); } }
+    if (y < h-1){ const j=i+w; if (bgMask[j] && !background[j]){ background[j]=1; stack.push(j); } }
   }
 
   const foreground = new Uint8Array(n);
