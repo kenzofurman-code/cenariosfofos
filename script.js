@@ -130,7 +130,7 @@ async function segmentStickerSheet(file, maxDim = 1400, minAreaPx = 500){
   const isBgCandidate = new Uint8Array(n);
   for (let i = 0; i < n; i++){
     const o = i*4;
-    isBgCandidate[i] = (data[o] > 230 && data[o+1] > 230 && data[o+2] > 230) ? 1 : 0;
+    isBgCandidate[i] = (data[o] > 220 && data[o+1] > 220 && data[o+2] > 220) ? 1 : 0;
   }
 
   const background = new Uint8Array(n);
@@ -152,7 +152,7 @@ async function segmentStickerSheet(file, maxDim = 1400, minAreaPx = 500){
 
   const foreground = new Uint8Array(n);
   for (let i = 0; i < n; i++) foreground[i] = background[i] ? 0 : 1;
-  const closed = closeMask(foreground, w, h, 3);
+  const closed = closeMask(foreground, w, h, 1);
 
   const labels = new Int32Array(n).fill(-1);
   const comps = [];
@@ -258,15 +258,12 @@ function renderScenarioSwitcher(){
     btn.addEventListener('click', () => selectScenario(idx));
     wrapper.appendChild(btn);
 
-    // Só exibe o botão de deletar se não for o cenário padrão
-    if (sc.id !== 'loja') {
-      const delBtn = document.createElement('button');
-      delBtn.className = 'scenario-delete-btn';
-      delBtn.innerHTML = '&times;';
-      delBtn.title = 'Excluir cenário';
-      delBtn.addEventListener('click', (e) => deleteScenario(idx, e));
-      wrapper.appendChild(delBtn);
-    }
+    const delBtn = document.createElement('button');
+    delBtn.className = 'scenario-delete-btn';
+    delBtn.innerHTML = '&times;';
+    delBtn.title = 'Excluir cenário';
+    delBtn.addEventListener('click', (e) => deleteScenario(idx, e));
+    wrapper.appendChild(delBtn);
 
     el.appendChild(wrapper);
   });
@@ -275,24 +272,29 @@ function renderScenarioSwitcher(){
 async function deleteScenario(idx, event) {
   event.stopPropagation();
   const sc = scenarios[idx];
-  if (!sc || sc.id === 'loja') return;
+  if (!sc) return;
 
   const confirmDelete = confirm(`Deseja mesmo excluir o cenário "${sc.name}"?`);
   if (!confirmDelete) return;
 
-  // Se o cenário deletado for o atual, seleciona o padrão antes
+  // Se o cenário deletado for o ativo
   if (idx === currentScenarioIndex) {
-    await selectScenario(0);
+    if (scenarios.length > 1) {
+      const nextIdx = (idx === 0) ? 1 : idx - 1;
+      await selectScenario(nextIdx);
+    } else {
+      await selectScenario(-1);
+    }
   }
 
   // Remove do array local
   scenarios.splice(idx, 1);
 
   // Ajusta o índice do cenário ativo
-  if (currentScenarioIndex > idx) {
+  if (scenarios.length === 0) {
+    currentScenarioIndex = -1;
+  } else if (currentScenarioIndex > idx) {
     currentScenarioIndex--;
-  } else if (currentScenarioIndex === idx) {
-    currentScenarioIndex = 0;
   }
 
   // Deleta do IndexedDB local
@@ -333,6 +335,7 @@ function renderVariantSwitcher(){
 }
 async function applyVariant(){
   const sc = getCurrentScenario();
+  if (!sc) return;
   if (currentVariantDeg === 0){ stageBg.src = sc.background; return; }
   if (!sc.variantCache) sc.variantCache = {};
   if (sc.variantCache[currentVariantDeg]){ stageBg.src = sc.variantCache[currentVariantDeg]; return; }
@@ -364,9 +367,28 @@ async function saveCurrentLayout(){
 async function selectScenario(idx, isInitialLoad = false){
   if (!isInitialLoad) await saveCurrentLayout(); // don't lose in-progress work on the scenario we're leaving
 
+  if (scenarios.length === 0 || idx === -1) {
+    currentScenarioIndex = -1;
+    currentVariantDeg = 0;
+    stageBg.src = 'assets/background_empty.webp';
+    refCard.style.display = 'none';
+
+    renderPalette();
+    renderScenarioSwitcher();
+    renderVariantSwitcher();
+    resetView();
+
+    placedItems.forEach(r => r.el.remove());
+    placedItems = [];
+    deselect();
+    history = [];
+    return;
+  }
+
   currentScenarioIndex = idx;
   currentVariantDeg = 0;
   const sc = getCurrentScenario();
+  if (!sc) return;
 
   if (sc.thumbnail){ refThumb.src = sc.thumbnail; refCard.style.display = ''; }
   else { refCard.style.display = 'none'; }
@@ -393,6 +415,10 @@ async function selectScenario(idx, isInitialLoad = false){
 function renderPalette(){
   paletteGrid.innerHTML = '';
   const sc = getCurrentScenario();
+  if (!sc) {
+    paletteGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--ink); opacity: 0.6; padding: 20px; font-family: \'Baloo 2\', cursive; font-weight: 700;">Nenhum cenário selecionado. Importe um cenário para começar! 🧺</div>';
+    return;
+  }
   sc.stickers.forEach(s => {
     const cell = document.createElement('div');
     cell.className = 'palette-item';
@@ -784,8 +810,6 @@ function setSyncStatus(text){ if (syncStatusEl) syncStatusEl.textContent = text;
 
 // ======================= Init =======================
 (async function init(){
-  scenarios.push(buildDefaultScenario());
-
   // 1) instant local cache — works fully offline
   try {
     const localExtras = await loadScenariosLocal();
@@ -794,7 +818,11 @@ function setSyncStatus(text){ if (syncStatusEl) syncStatusEl.textContent = text;
     });
   } catch (e){ console.warn('Cache local indisponível', e); }
 
-  await selectScenario(0, true);
+  if (scenarios.length > 0) {
+    await selectScenario(0, true);
+  } else {
+    await selectScenario(-1, true);
+  }
   setSyncStatus(cloudEnabled ? '☁️ Conectando...' : '💾 Só local (sem Firebase configurado)');
 
   // 2) cloud sync in the background — never blocks first paint
@@ -805,6 +833,7 @@ function setSyncStatus(text){ if (syncStatusEl) syncStatusEl.textContent = text;
       try {
         const cloudScenarios = await loadScenariosCloud();
         let added = 0;
+        const wasEmpty = (scenarios.length === 0);
         cloudScenarios.forEach(sc => {
           if (!scenarios.find(s => s.id === sc.id)){
             scenarios.push(sc);
@@ -812,7 +841,12 @@ function setSyncStatus(text){ if (syncStatusEl) syncStatusEl.textContent = text;
             added++;
           }
         });
-        if (added) renderScenarioSwitcher();
+        if (added) {
+          renderScenarioSwitcher();
+          if (wasEmpty && scenarios.length > 0) {
+            await selectScenario(0, true);
+          }
+        }
         setSyncStatus('☁️ Sincronizado');
       } catch (e){
         console.warn(e);
