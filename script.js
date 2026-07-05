@@ -571,7 +571,8 @@ function startDragFromPalette(e, stickerData){
   e.preventDefault();
   dragState = { sticker: stickerData };
   dragGhost.src = stickerData.uri;
-  const ghostWidth = ((stickerData.w || 300) * 0.45);
+  const bgWidth = stageBg.naturalWidth || 1400;
+  const ghostWidth = ((stickerData.w || 300) / 1000) * bgWidth * baseScale * zoom;
   dragGhost.style.width = ghostWidth + 'px';
   dragGhost.classList.remove('hidden');
   moveGhost(e.clientX, e.clientY);
@@ -614,7 +615,8 @@ function placeSticker(stickerData, xPct, yPct, opts = {}){
   el.className = 'placed';
   el.draggable = false;
   el.dataset.id = id;
-  const baseWidth = opts.widthPx || ((stickerData.w || 300) * 0.45);
+  const bgWidth = stageBg.naturalWidth || 1400;
+  const baseWidth = opts.widthPx || ((stickerData.w || 300) / 1000) * bgWidth;
   el.style.width = baseWidth + 'px';
   el.style.left = xPct + '%';
   el.style.top = yPct + '%';
@@ -717,17 +719,54 @@ itemToolbar.addEventListener('click', (e) => {
 window.addEventListener('resize', () => { if (selectedItem) positionToolbar(selectedItem); });
 
 // ======================= Pan & Zoom =======================
-let panX = 0, panY = 0, zoom = 1;
+let panX = 0, panY = 0, zoom = 1, baseScale = 1;
 const activePointers = new Map();
 let isPanning = false;
 let panStart = { x: 0, y: 0, panX: 0, panY: 0 };
 let pinchStartDist = 0, pinchStartZoom = 1, pinchMid = { x: 0, y: 0 }, pinchStartPan = { x: 0, y: 0 };
 
 function applyTransform(){
-  stageInner.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+  const finalScale = zoom * baseScale;
+  stageInner.style.transform = `translate(${panX}px, ${panY}px) scale(${finalScale})`;
   if (selectedItem) positionToolbar(selectedItem);
 }
-function resetView(){ zoom = 1; panX = 0; panY = 0; applyTransform(); }
+
+function resetView(){
+  zoom = 1;
+  const w = stageBg.naturalWidth || 1400;
+  const h = stageBg.naturalHeight || 1000;
+  const parentRect = stage.getBoundingClientRect();
+  const scaleX = parentRect.width / w;
+  const scaleY = parentRect.height / h;
+  baseScale = Math.min(scaleX, scaleY) || 1;
+  
+  // Centraliza o palco interno dentro do contêiner externo
+  panX = (parentRect.width - w * baseScale) / 2;
+  panY = (parentRect.height - h * baseScale) / 2;
+  applyTransform();
+}
+
+// Ao carregar um cenário, ajusta as dimensões do palco para a resolução real do fundo
+stageBg.addEventListener('load', () => {
+  const w = stageBg.naturalWidth || 1400;
+  const h = stageBg.naturalHeight || 1000;
+  stageInner.style.width = w + 'px';
+  stageInner.style.height = h + 'px';
+  resetView();
+});
+
+// Ao redimensionar a janela, recalcula a escala base para manter o preenchimento sem perder o zoom/pan
+window.addEventListener('resize', () => {
+  if (currentScenarioIndex !== -1) {
+    const w = stageBg.naturalWidth || 1400;
+    const h = stageBg.naturalHeight || 1000;
+    const parentRect = stage.getBoundingClientRect();
+    const scaleX = parentRect.width / w;
+    const scaleY = parentRect.height / h;
+    baseScale = Math.min(scaleX, scaleY) || 1;
+    applyTransform();
+  }
+});
 
 stage.addEventListener('pointerdown', (e) => {
   if (e.target.closest('.placed')) return;
