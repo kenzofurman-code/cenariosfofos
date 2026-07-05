@@ -475,14 +475,49 @@ function renderPalette(){
     paletteGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--ink); opacity: 0.6; padding: 20px; font-family: \'Baloo 2\', cursive; font-weight: 700;">Nenhum cenário selecionado. Importe um cenário para começar! 🧺</div>';
     return;
   }
-  sc.stickers.forEach(s => {
+  sc.stickers.forEach((s, sIdx) => {
     const cell = document.createElement('div');
     cell.className = 'palette-item';
+    
     const img = document.createElement('img');
     img.src = s.uri;
     img.draggable = false;
     cell.appendChild(img);
-    cell.addEventListener('pointerdown', (e) => startDragFromPalette(e, s));
+
+    // Botão vermelho de excluir figurinha individual (X)
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'sticker-delete-btn';
+    deleteBtn.innerHTML = '×';
+    deleteBtn.title = 'Excluir esta figurinha';
+    cell.appendChild(deleteBtn);
+
+    deleteBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const confirmDel = confirm('Deseja mesmo excluir esta figurinha da sua paleta?');
+      if (!confirmDel) return;
+
+      // Remove do array do cenário
+      sc.stickers.splice(sIdx, 1);
+
+      // Salva no IndexedDB local
+      await saveScenarioLocal(sc);
+
+      // Sincroniza na nuvem
+      if (cloudEnabled) {
+        setSyncStatus('☁️ Sincronizando alteração...');
+        const ok = await saveScenarioCloud(sc);
+        setSyncStatus(ok ? '☁️ Sincronizado' : '⚠️ Erro ao atualizar nuvem');
+      }
+
+      // Re-renderiza a paleta
+      renderPalette();
+    });
+
+    cell.addEventListener('pointerdown', (e) => {
+      if (e.target !== deleteBtn) {
+        startDragFromPalette(e, s);
+      }
+    });
     paletteGrid.appendChild(cell);
   });
 }
@@ -493,7 +528,8 @@ function startDragFromPalette(e, stickerData){
   e.preventDefault();
   dragState = { sticker: stickerData };
   dragGhost.src = stickerData.uri;
-  dragGhost.style.width = '90px';
+  const ghostWidth = ((stickerData.w || 300) * 0.45);
+  dragGhost.style.width = ghostWidth + 'px';
   dragGhost.classList.remove('hidden');
   moveGhost(e.clientX, e.clientY);
   window.addEventListener('pointermove', onPaletteDragMove);
@@ -535,7 +571,7 @@ function placeSticker(stickerData, xPct, yPct, opts = {}){
   el.className = 'placed';
   el.draggable = false;
   el.dataset.id = id;
-  const baseWidth = opts.widthPx || Math.min(140, (stickerData.w || 300) * 0.32);
+  const baseWidth = opts.widthPx || ((stickerData.w || 300) * 0.45);
   el.style.width = baseWidth + 'px';
   el.style.left = xPct + '%';
   el.style.top = yPct + '%';

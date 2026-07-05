@@ -92,12 +92,24 @@ export async function saveScenarioCloud(scenario){
       : (scenario.thumbnail || '');
 
     // Salvar figurinhas em lote na subcoleção do Firestore
+    const { getDocs } = window.__firestoreMod;
     const stickersColRef = collection(db, 'users', getSyncFolderId(), 'scenarios', scenario.id, 'stickers');
+    const stickersSnap = await getDocs(stickersColRef).catch(() => ({ size: 0 }));
+    const existingStickersCount = stickersSnap.size || 0;
+
     const batch = writeBatch(db);
     scenario.stickers.forEach((s, idx) => {
       const sRef = doc(stickersColRef, `s${idx}`);
       batch.set(sRef, { uri: s.uri, w: s.w, h: s.h });
     });
+
+    // Deleta documentos extras remanescentes caso a lista tenha encolhido
+    if (existingStickersCount > scenario.stickers.length) {
+      for (let k = scenario.stickers.length; k < existingStickersCount; k++) {
+        const extraRef = doc(stickersColRef, `s${k}`);
+        batch.delete(extraRef);
+      }
+    }
     await batch.commit();
 
     await setDoc(doc(scenariosCol(), scenario.id), {
