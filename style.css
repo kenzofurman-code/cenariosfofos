@@ -123,6 +123,58 @@ h1{
 .scenario-btn{ background: var(--gold); }
 .scenario-btn.active{ background: var(--lavender-deep); }
 
+.scenario-card-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.scenario-card-wrapper .scenario-btn {
+  padding-right: 28px;
+}
+
+.scenario-delete-btn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%) scale(0.8);
+  background: rgba(242, 184, 198, 0.4);
+  color: var(--ink);
+  border: none;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.2s ease;
+  font-weight: 800;
+  z-index: 10;
+  line-height: 1;
+}
+
+.scenario-card-wrapper:hover .scenario-delete-btn {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+}
+
+.scenario-delete-btn:hover {
+  background: #ff4b72;
+  color: var(--white);
+  transform: translateY(-50%) scale(1.2);
+}
+
+@media (hover: none) {
+  .scenario-delete-btn {
+    opacity: 0.7;
+    transform: translateY(-50%) scale(1);
+  }
+}
+
+
 .zoom-controls{
   position:absolute;
   right: 16px;

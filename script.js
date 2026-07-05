@@ -1,12 +1,13 @@
 import { STICKERS } from './assets/manifest.js';
 import {
   saveScenarioLocal, loadScenariosLocal,
-  saveLayoutLocal, loadLayoutLocal
+  saveLayoutLocal, loadLayoutLocal,
+  deleteScenarioLocal, deleteLayoutLocal
 } from './db-local.js';
 import {
   cloudEnabled, initCloud,
   saveScenarioCloud, loadScenariosCloud,
-  saveLayoutCloud
+  saveLayoutCloud, deleteScenarioCloud
 } from './firebase.js';
 
 // ======================= DOM refs =======================
@@ -248,13 +249,73 @@ function renderScenarioSwitcher(){
   const el = document.getElementById('scenarioSwitcher');
   el.innerHTML = '';
   scenarios.forEach((sc, idx) => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'scenario-card-wrapper';
+
     const btn = document.createElement('button');
     btn.className = 'scenario-btn' + (idx === currentScenarioIndex ? ' active' : '');
     btn.textContent = sc.name;
     btn.addEventListener('click', () => selectScenario(idx));
-    el.appendChild(btn);
+    wrapper.appendChild(btn);
+
+    // Só exibe o botão de deletar se não for o cenário padrão
+    if (sc.id !== 'loja') {
+      const delBtn = document.createElement('button');
+      delBtn.className = 'scenario-delete-btn';
+      delBtn.innerHTML = '&times;';
+      delBtn.title = 'Excluir cenário';
+      delBtn.addEventListener('click', (e) => deleteScenario(idx, e));
+      wrapper.appendChild(delBtn);
+    }
+
+    el.appendChild(wrapper);
   });
 }
+
+async function deleteScenario(idx, event) {
+  event.stopPropagation();
+  const sc = scenarios[idx];
+  if (!sc || sc.id === 'loja') return;
+
+  const confirmDelete = confirm(`Deseja mesmo excluir o cenário "${sc.name}"?`);
+  if (!confirmDelete) return;
+
+  // Se o cenário deletado for o atual, seleciona o padrão antes
+  if (idx === currentScenarioIndex) {
+    await selectScenario(0);
+  }
+
+  // Remove do array local
+  scenarios.splice(idx, 1);
+
+  // Ajusta o índice do cenário ativo
+  if (currentScenarioIndex > idx) {
+    currentScenarioIndex--;
+  } else if (currentScenarioIndex === idx) {
+    currentScenarioIndex = 0;
+  }
+
+  // Deleta do IndexedDB local
+  try {
+    await deleteScenarioLocal(sc.id);
+    await deleteLayoutLocal(sc.id);
+  } catch (e) {
+    console.warn('Erro ao deletar cenário do cache local', e);
+  }
+
+  // Deleta do Firebase
+  if (cloudEnabled) {
+    try {
+      await deleteScenarioCloud(sc.id);
+    } catch (e) {
+      console.warn('Erro ao deletar cenário da nuvem', e);
+    }
+  }
+
+  // Re-renderiza a lista de cenários
+  renderScenarioSwitcher();
+}
+
 function renderVariantSwitcher(){
   const el = document.getElementById('variantSwitcher');
   el.innerHTML = '';

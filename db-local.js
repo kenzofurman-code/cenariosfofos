@@ -69,3 +69,14 @@ export async function loadLayoutLocal(scenarioId){
     req.onerror = () => reject(req.error);
   });
 }
+
+export async function deleteLayoutLocal(scenarioId){
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('layouts', 'readwrite');
+    tx.objectStore('layouts').delete(scenarioId);
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+

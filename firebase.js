@@ -151,3 +151,30 @@ export async function loadLayoutCloud(scenarioId){
     return snap.exists() ? snap.data().items : null;
   } catch (e) { return null; }
 }
+
+export async function deleteScenarioCloud(id){
+  if (!cloudEnabled || !currentUser) return false;
+  try {
+    const { doc, deleteDoc } = window.__firestoreMod;
+    // 1. Delete scenario document from user's subcollection
+    await deleteDoc(doc(scenariosCol(), id));
+    // 2. Delete layout document from user's layouts subcollection
+    await deleteDoc(doc(db, 'users', currentUser.uid, 'layouts', id));
+    
+    // 3. Delete files from Firebase Storage if possible
+    try {
+      const { ref, deleteObject } = window.__storageMod;
+      await deleteObject(ref(storage, `scenarios/${id}/background.webp`)).catch(() => {});
+      await deleteObject(ref(storage, `scenarios/${id}/thumbnail.webp`)).catch(() => {});
+      await deleteObject(ref(storage, `scenarios/${id}/stickers.json`)).catch(() => {});
+    } catch (storageErr) {
+      // ignore storage errors
+    }
+    
+    return true;
+  } catch (e) {
+    console.warn('[nuvem] falha ao deletar cenário', e);
+    return false;
+  }
+}
+
