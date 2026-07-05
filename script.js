@@ -928,19 +928,39 @@ function setSyncStatus(text){
       setSyncStatus('☁️ Sincronizando...');
       try {
         const cloudScenarios = await loadScenariosCloud();
-        let added = 0;
-        const wasEmpty = (scenarios.length === 0);
-        cloudScenarios.forEach(sc => {
-          if (!scenarios.find(s => s.id === sc.id)){
-            scenarios.push(sc);
-            saveScenarioLocal(sc);
-            added++;
+        let changed = false;
+        
+        // A) Encontra cenários deletados na nuvem e limpa localmente
+        const activeIds = new Set(cloudScenarios.map(s => s.id));
+        for (let i = scenarios.length - 1; i >= 0; i--) {
+          const sc = scenarios[i];
+          if (sc.id.startsWith('custom') && !activeIds.has(sc.id)) {
+            await deleteScenarioLocal(sc.id);
+            await deleteLayoutLocal(sc.id);
+            scenarios.splice(i, 1);
+            changed = true;
           }
-        });
-        if (added) {
+        }
+
+        // B) Adiciona novos cenários vindos da nuvem
+        for (const sc of cloudScenarios) {
+          if (!scenarios.find(s => s.id === sc.id)) {
+            scenarios.push(sc);
+            await saveScenarioLocal(sc);
+            changed = true;
+          }
+        }
+
+        if (changed) {
           renderScenarioSwitcher();
-          if (wasEmpty && scenarios.length > 0) {
-            await selectScenario(0, true);
+          // Garante que o índice selecionado continua válido
+          if (currentScenarioIndex >= scenarios.length) {
+            currentScenarioIndex = scenarios.length > 0 ? 0 : -1;
+          }
+          if (currentScenarioIndex !== -1) {
+            await selectScenario(currentScenarioIndex, true);
+          } else {
+            await selectScenario(-1, true);
           }
         }
         setSyncStatus('☁️ Sincronizado');
