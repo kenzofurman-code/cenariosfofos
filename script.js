@@ -7,8 +7,8 @@ import {
 import {
   cloudEnabled, initCloud,
   saveScenarioCloud, loadScenariosCloud,
-  saveLayoutCloud, deleteScenarioCloud,
-  getSyncFolderId
+  saveLayoutCloud, loadLayoutCloud,
+  deleteScenarioCloud, getSyncFolderId
 } from './firebase.js';
 
 // ======================= DOM refs =======================
@@ -365,6 +365,33 @@ async function selectScenario(idx, isInitialLoad = false){
     savedLayout.forEach(s => placeStickerSilently(s.uri, s.xPct, s.yPct, s.width, s.z));
   }
   pushHistory(false); // seed baseline without re-triggering a save loop
+
+  // Buscar layout atualizado na nuvem em segundo plano
+  if (cloudEnabled) {
+    (async () => {
+      try {
+        const cloudLayout = await loadLayoutCloud(sc.id);
+        if (cloudLayout) {
+          const localJSON = JSON.stringify(savedLayout || []);
+          const cloudJSON = JSON.stringify(cloudLayout);
+          if (localJSON !== cloudJSON) {
+            await saveLayoutLocal(sc.id, cloudLayout);
+            // Se o usuário ainda estiver no mesmo cenário, atualiza a tela
+            if (currentScenarioIndex === idx) {
+              placedItems.forEach(r => r.el.remove());
+              placedItems = [];
+              deselect();
+              history = [];
+              cloudLayout.forEach(s => placeStickerSilently(s.uri, s.xPct, s.yPct, s.width, s.z));
+              pushHistory(false);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Erro ao sincronizar layout da nuvem', e);
+      }
+    })();
+  }
 }
 
 // ======================= Palette (single unified grid) =======================
