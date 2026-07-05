@@ -128,20 +128,39 @@ async function segmentStickerSheet(file, maxDim = 1400, minAreaPx = 500){
   const data = imgData.data;
   const n = w * h;
 
-  // 1) Amostra a cor de fundo nos 4 cantos da folha para detectar a cor do papel
-  const corners = [
-    [0, 0],
-    [w - 1, 0],
-    [0, h - 1],
-    [w - 1, h - 1]
+  // 1) Amostra a cor de fundo com um recuo (inset) de 3% para ignorar possíveis molduras ou bordas
+  const insetX = Math.max(2, Math.round(w * 0.03));
+  const insetY = Math.max(2, Math.round(h * 0.03));
+
+  const samplePoints = [
+    [insetX, insetY],
+    [w / 2 | 0, insetY],
+    [w - 1 - insetX, insetY],
+    [insetX, h / 2 | 0],
+    [w - 1 - insetX, h / 2 | 0],
+    [insetX, h - 1 - insetY],
+    [w / 2 | 0, h - 1 - insetY],
+    [w - 1 - insetX, h - 1 - insetY]
   ];
-  let sumR = 0, sumG = 0, sumB = 0;
-  corners.forEach(([cx, cy]) => {
+
+  const candidates = samplePoints.map(([cx, cy]) => {
     const o = (cy * w + cx) * 4;
-    sumR += data[o];
-    sumG += data[o + 1];
-    sumB += data[o + 2];
+    return {
+      r: data[o],
+      g: data[o + 1],
+      b: data[o + 2],
+      brightness: data[o] + data[o + 1] + data[o + 2]
+    };
   });
+
+  // Ordena por brilho decrescente (mais claras primeiro) e faz a média das 4 mais claras
+  candidates.sort((a, b) => b.brightness - a.brightness);
+  let sumR = 0, sumG = 0, sumB = 0;
+  for (let k = 0; k < 4; k++) {
+    sumR += candidates[k].r;
+    sumG += candidates[k].g;
+    sumB += candidates[k].b;
+  }
   const bgR = sumR / 4;
   const bgG = sumG / 4;
   const bgB = sumB / 4;
@@ -167,8 +186,16 @@ async function segmentStickerSheet(file, maxDim = 1400, minAreaPx = 500){
     const i = y*w + x;
     if (bgMask[i] && !background[i]){ background[i] = 1; stack.push(i); }
   }
-  for (let x = 0; x < w; x++){ seed(x, 0); seed(x, h-1); }
-  for (let y = 0; y < h; y++){ seed(0, y); seed(w-1, y); }
+
+  // Semeia o preenchimento de fundo ao longo do retângulo de recuo (inset) de 3%
+  for (let x = insetX; x < w - insetX; x++){
+    seed(x, insetY);
+    seed(x, h - 1 - insetY);
+  }
+  for (let y = insetY; y < h - insetY; y++){
+    seed(insetX, y);
+    seed(w - 1 - insetX, y);
+  }
   while (stack.length){
     const i = stack.pop();
     const x = i % w, y = (i / w) | 0;
