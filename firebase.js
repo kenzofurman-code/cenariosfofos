@@ -81,7 +81,7 @@ export async function uploadJSONToStorage(obj, path){
 export async function saveScenarioCloud(scenario){
   if (!cloudEnabled || !currentUser) return false;
   try {
-    const { doc, setDoc, serverTimestamp } = window.__firestoreMod;
+    const { doc, setDoc, serverTimestamp, collection, writeBatch } = window.__firestoreMod;
 
     const bgURL = scenario.background.startsWith('data:')
       ? await uploadImageToStorage(scenario.background, `scenarios/${scenario.id}/background.webp`)
@@ -91,13 +91,19 @@ export async function saveScenarioCloud(scenario){
       ? await uploadImageToStorage(scenario.thumbnail, `scenarios/${scenario.id}/thumbnail.webp`)
       : (scenario.thumbnail || '');
 
-    const stickersURL = await uploadJSONToStorage(scenario.stickers, `scenarios/${scenario.id}/stickers.json`);
+    // Salvar figurinhas em lote na subcoleção do Firestore
+    const stickersColRef = collection(db, 'users', getSyncFolderId(), 'scenarios', scenario.id, 'stickers');
+    const batch = writeBatch(db);
+    scenario.stickers.forEach((s, idx) => {
+      const sRef = doc(stickersColRef, `s${idx}`);
+      batch.set(sRef, { uri: s.uri, w: s.w, h: s.h });
+    });
+    await batch.commit();
 
     await setDoc(doc(scenariosCol(), scenario.id), {
       name: scenario.name,
       background: bgURL,
       thumbnail: thumbURL,
-      stickersURL,
       stickerCount: scenario.stickers.length,
       updatedAt: serverTimestamp()
     });
@@ -111,15 +117,22 @@ export async function saveScenarioCloud(scenario){
 export async function loadScenariosCloud(){
   if (!cloudEnabled || !currentUser) return [];
   try {
-    const { getDocs } = window.__firestoreMod;
+    const { getDocs, collection } = window.__firestoreMod;
     const snap = await getDocs(scenariosCol());
     const out = [];
     for (const d of snap.docs){
       const data = d.data();
       let stickers = [];
       try {
-        const res = await fetch(data.stickersURL);
-        stickers = await res.json();
+        const stickersColRef = collection(db, 'users', getSyncFolderId(), 'scenarios', d.id, 'stickers');
+        const stickersSnap = await getDocs(stickersColRef);
+        const sortedDocs = stickersSnap.docs.map(doc => ({ id: doc.id, data: doc.data() }));
+        sortedDocs.sort((a, b) => {
+          const numA = parseInt(a.id.replace('s', ''), 10);
+          const numB = parseInt(b.id.replace('s', ''), 10);
+          return numA - numB;
+        });
+        stickers = sortedDocs.map(item => item.data);
       } catch (e){ console.warn('[nuvem] falha ao buscar adesivos de', d.id, e); }
       out.push({
         id: d.id,
@@ -160,18 +173,27 @@ export async function loadLayoutCloud(scenarioId){
 export async function deleteScenarioCloud(id){
   if (!cloudEnabled || !currentUser) return false;
   try {
-    const { doc, deleteDoc } = window.__firestoreMod;
-    // 1. Delete scenario document from user's subcollection
+    const { doc, deleteDoc, collection, getDocs, writeBatch } = window.__firestoreMod;
+
+    // 1. Delete all stickers in the subcollection first
+    const stickersColRef = collection(db, 'users', getSyncFolderId(), 'scenarios', id, 'stickers');
+    const stickersSnap = await getDocs(stickersColRef);
+    const batch = writeBatch(db);
+    stickersSnap.docs.forEach(d => {
+      batch.delete(d.ref);
+    });
+    await batch.commit();
+
+    // 2. Delete scenario document from user's subcollection
     await deleteDoc(doc(scenariosCol(), id));
-    // 2. Delete layout document from user's layouts subcollection
+    // 3. Delete layout document from user's layouts subcollection
     await deleteDoc(doc(db, 'users', getSyncFolderId(), 'layouts', id));
     
-    // 3. Delete files from Firebase Storage if possible
+    // 4. Delete files from Firebase Storage if possible
     try {
       const { ref, deleteObject } = window.__storageMod;
       await deleteObject(ref(storage, `scenarios/${id}/background.webp`)).catch(() => {});
       await deleteObject(ref(storage, `scenarios/${id}/thumbnail.webp`)).catch(() => {});
-      await deleteObject(ref(storage, `scenarios/${id}/stickers.json`)).catch(() => {});
     } catch (storageErr) {
       // ignore storage errors
     }
