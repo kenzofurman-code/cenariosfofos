@@ -246,15 +246,18 @@ h1{
 }
 
 .ref-card{
-  position:absolute;
-  left: 24px;
-  bottom: 24px;
+  position: relative;
+  flex: 0 0 auto;
   background: var(--white);
-  border-radius: 18px;
-  padding: 10px;
-  box-shadow: var(--shadow);
-  border: 3px solid var(--lavender);
+  border-right: 3px dashed var(--lavender);
+  padding: 16px;
   width: 260px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  overflow-y: auto;
   z-index: 50;
 }
 .ref-card img{
@@ -430,13 +433,23 @@ h1{
 
 /* mobile / narrow layout */
 @media (max-width: 820px){
-  .layout{ flex-direction:column; }
+  .layout{ position: relative; flex-direction:column; }
   .palette{
     flex: 0 0 34%;
     border-left:none;
     border-top: 3px dashed var(--lavender);
   }
-  .ref-card{ width: 150px; left: 10px; bottom: 10px; padding: 6px; }
+  .ref-card{
+    position: absolute !important;
+    left: 10px !important;
+    bottom: calc(34% + 10px) !important;
+    width: 130px !important;
+    border: 3px solid var(--lavender) !important;
+    border-radius: 12px !important;
+    box-shadow: var(--shadow) !important;
+    padding: 6px !important;
+    border-right: none !important;
+  }
   h1{ font-size: 1.1rem; }
   .switchers{ max-width: 90%; }
 }

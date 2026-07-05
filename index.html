@@ -23,7 +23,14 @@
 
 <main class="layout">
 
-  <!-- Center-right: the empty scene canvas -->
+  <!-- Left sidebar: reference model scenario -->
+  <aside id="refCard" class="ref-card">
+    <div class="ref-card-label">✨ Modelo</div>
+    <img id="refThumb" alt="Cenário completo de referência" draggable="false">
+    <input type="range" id="refSizeSlider" min="110" max="520" value="260" class="ref-size-slider">
+  </aside>
+
+  <!-- Center: the empty scene canvas -->
   <section class="stage-wrap">
 
     <div class="switchers">
@@ -41,13 +48,6 @@
         <img id="stageBg" class="stage-bg" alt="Cenário vazio" draggable="false">
         <!-- placed stickers get injected here -->
       </div>
-    </div>
-
-    <!-- Bottom-left floating reference thumbnail -->
-    <div id="refCard" class="ref-card">
-      <div class="ref-card-label">✨ Modelo</div>
-      <img id="refThumb" alt="Cenário completo de referência" draggable="false">
-      <input type="range" id="refSizeSlider" min="110" max="520" value="260" class="ref-size-slider">
     </div>
   </section>
 
