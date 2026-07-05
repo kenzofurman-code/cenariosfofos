@@ -286,6 +286,49 @@ async function segmentStickerSheet(file, maxDim = 1400, minAreaPx = 500){
         outData.data[dstO+3] = (labels[srcI] === c.labelId) ? 255 : 0;
       }
     }
+
+    // 3) Remove a borda branca externa da figurinha segmentada
+    const fStack = [];
+    const visited = new Uint8Array(outW * outH);
+
+    // Inicializa a pilha com todos os pixels transparentes do contorno do canvas recortado
+    for (let yy = 0; yy < outH; yy++) {
+      for (let xx = 0; xx < outW; xx++) {
+        const dstO = (yy * outW + xx) * 4;
+        if (outData.data[dstO + 3] === 0) {
+          const idx = yy * outW + xx;
+          fStack.push(idx);
+          visited[idx] = 1;
+        }
+      }
+    }
+
+    while (fStack.length) {
+      const idx = fStack.pop();
+      const xx = idx % outW, yy = (idx / outW) | 0;
+
+      const neighbors = [];
+      if (xx > 0) neighbors.push(idx - 1);
+      if (xx < outW - 1) neighbors.push(idx + 1);
+      if (yy > 0) neighbors.push(idx - outW);
+      if (yy < outH - 1) neighbors.push(idx + outW);
+
+      for (const nIdx of neighbors) {
+        if (!visited[nIdx]) {
+          visited[nIdx] = 1;
+          const no = nIdx * 4;
+          // Se for opaco mas muito branco (R, G, B > 235), torna transparente e propaga
+          if (outData.data[no + 3] > 0 &&
+              outData.data[no] > 235 &&
+              outData.data[no + 1] > 235 &&
+              outData.data[no + 2] > 235) {
+            outData.data[no + 3] = 0;
+            fStack.push(nIdx);
+          }
+        }
+      }
+    }
+
     octx.putImageData(outData, 0, 0);
     results.push({ uri: outCanvas.toDataURL('image/png'), w: outW, h: outH });
   }
