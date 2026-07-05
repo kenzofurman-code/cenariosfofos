@@ -128,10 +128,34 @@ async function segmentStickerSheet(file, maxDim = 1400, minAreaPx = 500){
   const data = imgData.data;
   const n = w * h;
 
+  // 1) Amostra a cor de fundo nos 4 cantos da folha para detectar a cor do papel
+  const corners = [
+    [0, 0],
+    [w - 1, 0],
+    [0, h - 1],
+    [w - 1, h - 1]
+  ];
+  let sumR = 0, sumG = 0, sumB = 0;
+  corners.forEach(([cx, cy]) => {
+    const o = (cy * w + cx) * 4;
+    sumR += data[o];
+    sumG += data[o + 1];
+    sumB += data[o + 2];
+  });
+  const bgR = sumR / 4;
+  const bgG = sumG / 4;
+  const bgB = sumB / 4;
+
+  // 2) Classifica os pixels como fundo se a distância de cor R-G-B for menor que a tolerância
   const isBgCandidate = new Uint8Array(n);
+  const tolerance = 30; // distância euclidiana R-G-B tolerável
   for (let i = 0; i < n; i++){
     const o = i*4;
-    isBgCandidate[i] = (data[o] > 220 && data[o+1] > 220 && data[o+2] > 220) ? 1 : 0;
+    const dr = data[o] - bgR;
+    const dg = data[o+1] - bgG;
+    const db = data[o+2] - bgB;
+    const dist = Math.sqrt(dr*dr + dg*dg + db*db);
+    isBgCandidate[i] = (dist < tolerance) ? 1 : 0;
   }
 
   let bgMask = boxMin1D(isBgCandidate, w, h, 1, true);
